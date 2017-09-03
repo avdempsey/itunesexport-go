@@ -77,12 +77,11 @@ func ExportPlaylists(exportSettings *ExportSettings, library *Library) error {
 		for _, track := range playlist.Tracks(exportSettings.Library) {
 
 			sourceFileLocation, errParse := url.QueryUnescape(track.Location)
-			sourceFileLocation = trimTrackLocationPrefix(fileLocation)
+			sourceFileLocation = trimTrackLocationPrefix(sourceFileLocation)
 
-
-			playlistFileLocation, err := copyTrack(exportSettings, library, &playlist, &track)
+			err := copyTrack(exportSettings, library, &playlist, &track, sourceFileLocation)
 			if err != nil {
-				fmt.Printf("Unable to copy file %v Error: %v\n", fileLocation, err.Error())
+				fmt.Printf("Unable to copy file %v Error: %v\n", sourceFileLocation, err.Error())
 				continue
 			}
 
@@ -91,7 +90,7 @@ func ExportPlaylists(exportSettings *ExportSettings, library *Library) error {
 				continue
 			}
 
-			err := entry(file, exportSettings, &playlist, &track, fileLocation)
+			err = entry(file, exportSettings, &playlist, &track, sourceFileLocation)
 			if err != nil {
 				return err
 			}
@@ -110,7 +109,7 @@ func ExportPlaylists(exportSettings *ExportSettings, library *Library) error {
 	return nil
 }
 
-func copyTrack(exportSettings *ExportSettings, library *Library, playlist *Playlist, track *Track, sourceFileLocation string) (playlistFileLocation string, error) {
+func copyTrack(exportSettings *ExportSettings, library *Library, playlist *Playlist, track *Track, sourceFileLocation string) error {
 
 	var destinationPath = ""
 
@@ -125,11 +124,10 @@ func copyTrack(exportSettings *ExportSettings, library *Library, playlist *Playl
 		return errors.New("Unknown Copy Type")
 	}
 
-	dest := filepath.Join(destinationPath, filepath.Base(fileLocation))
+	dest := filepath.Join(destinationPath, filepath.Base(sourceFileLocation))
 
-	return copyFile(fileLocation, dest)
-
-	return destinationPath, nil
+	return copyFile(sourceFileLocation, dest)
+	return nil
 }
 
 func copyFile(src, dest string) error {
@@ -140,7 +138,7 @@ func copyFile(src, dest string) error {
 	}
 
 	if !sourceFileInfo.Mode().IsRegular() {
-		errors.New("Source file is not a regular file.")
+		return errors.New("Source file is not a regular file.")
 	}
 
 	_, err = os.Stat(dest)
